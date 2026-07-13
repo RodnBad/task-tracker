@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; }
+
+    header {
+      background: #1f3864;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.3rem; }
+    header .filters { display: flex; gap: 10px; align-items: center; }
+    header select, header input {
+      padding: 6px 10px; border: none; border-radius: 4px;
+      font-size: 0.85rem; background: #2e4b7a; color: white;
+    }
+    header select option { background: #1f3864; }
+    header input::placeholder { color: #aac; }
+
+    .toolbar {
+      padding: 12px 24px;
+      display: flex;
+      gap: 10px;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+    }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 4px;
+      cursor: pointer; font-size: 0.85rem; font-weight: bold;
+    }
+    .btn-primary { background: #2e75b6; color: white; }
+    .btn-danger  { background: #c0392b; color: white; }
+    .btn-small   { padding: 4px 10px; font-size: 0.78rem; font-weight: normal; }
+    .btn:hover { opacity: 0.85; }
+
+    .board {
+      display: flex;
+      gap: 16px;
+      padding: 20px 24px;
+      min-height: calc(100vh - 120px);
+    }
+    .column {
+      flex: 1;
+      background: #e4e8ef;
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 240px;
+    }
+    .column-header {
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .col-todo   .column-header { background: #d5e8f0; color: #1a5276; }
+    .col-ip     .column-header { background: #fdebd0; color: #784212; }
+    .col-done   .column-header { background: #d5f5e3; color: #1e5631; }
+    .count { font-size: 0.8rem; background: rgba(0,0,0,.1); border-radius: 10px; padding: 2px 8px; }
+
+    .card {
+      background: white;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+      cursor: grab;
+      border-left: 4px solid transparent;
+      transition: box-shadow .15s;
+    }
+    .card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+    .card.dragging { opacity: 0.5; }
+    .card.overdue { border-left-color: #e74c3c; }
+    .card-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
+    .card-desc  { font-size: 0.8rem; color: #666; margin-bottom: 8px; word-break: break-word; }
+    .card-meta  { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .tag {
+      background: #2e75b6; color: white;
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
+    }
+    .due-date {
+      font-size: 0.75rem; color: #555;
+      background: #f0f0f0; padding: 2px 6px; border-radius: 4px;
+    }
+    .due-date.overdue { background: #fde8e8; color: #c0392b; font-weight: bold; }
+    .card-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+    .drop-target { border: 2px dashed #2e75b6; background: #eaf3fb; }
+
+    /* Modal */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .overlay.active { display: flex; }
+    .modal {
+      background: white; border-radius: 8px;
+      padding: 24px; width: 440px; max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    }
+    .modal h2 { margin-bottom: 16px; font-size: 1.1rem; color: #1f3864; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 0.82rem; font-weight: bold; margin-bottom: 4px; }
+    .field input, .field textarea, .field select {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc;
+      border-radius: 4px; font-size: 0.88rem;
+    }
+    .field textarea { height: 80px; resize: vertical; }
+    .field small { color: #888; font-size: 0.75rem; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #27ae60; color: white;
+      padding: 10px 20px; border-radius: 6px;
+      font-size: 0.85rem; opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none; z-index: 200;
+    }
+    .toast.error { background: #e74c3c; }
+    .toast.show  { opacity: 1; }
+
+    #filter-overdue:checked + label { color: #e74c3c; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Task Tracker</h1>
+  <div class="filters">
+    <input id="tag-filter" type="text" placeholder="Filter by tag…" oninput="renderBoard()" />
+    <label>
+      <input id="overdue-filter" type="checkbox" onchange="renderBoard()" />
+      Overdue only
+    </label>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="openModal()">+ New Task</button>
+</div>
+
+<div class="board">
+  <div class="column col-todo" id="col-todo" ondragover="onDragOver(event)" ondrop="onDrop(event,'todo')">
+    <div class="column-header">To Do <span class="count" id="count-todo">0</span></div>
+  </div>
+  <div class="column col-ip" id="col-in_progress" ondragover="onDragOver(event)" ondrop="onDrop(event,'in_progress')">
+    <div class="column-header">In Progress <span class="count" id="count-in_progress">0</span></div>
+  </div>
+  <div class="column col-done" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event,'done')">
+    <div class="column-header">Done <span class="count" id="count-done">0</span></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="modal-title">New Task</h2>
+    <div class="field">
+      <label>Title *</label>
+      <input id="f-title" type="text" placeholder="Task title" />
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="f-desc" placeholder="Optional description"></textarea>
+    </div>
+    <div class="field">
+      <label>Due Date</label>
+      <input id="f-due" type="date" />
+    </div>
+    <div class="field">
+      <label>Tags</label>
+      <input id="f-tags" type="text" placeholder="frontend, bug, urgent" />
+      <small>Comma-separated</small>
+    </div>
+    <div class="field" id="status-field" style="display:none">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="todo">To Do</option>
+        <option value="in_progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let allTasks = [];
+let editingId = null;
+let draggingId = null;
+
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+async function fetchTasks() {
+  try {
+    const res = await fetch(`${API}/tasks`);
+    allTasks = await res.json();
+    renderBoard();
+  } catch (e) {
+    toast('Cannot reach API — is the server running?', true);
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderBoard() {
+  const tagFilter   = document.getElementById('tag-filter').value.trim().toLowerCase();
+  const overdueOnly = document.getElementById('overdue-filter').checked;
+  const today       = new Date().toISOString().split('T')[0];
+
+  let tasks = [...allTasks];
+  if (tagFilter)   tasks = tasks.filter(t => t.tags.some(g => g.toLowerCase().includes(tagFilter)));
+  if (overdueOnly) tasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done');
+
+  ['todo','in_progress','done'].forEach(status => {
+    const col = document.getElementById(`col-${status}`);
+    // remove cards but keep header
+    Array.from(col.querySelectorAll('.card')).forEach(c => c.remove());
+    const filtered = tasks.filter(t => t.status === status);
+    document.getElementById(`count-${status}`).textContent = filtered.length;
+    filtered.forEach(t => col.appendChild(buildCard(t, today)));
+  });
+}
+
+function buildCard(task, today) {
+  const isOverdue = task.due_date && task.due_date < today && task.status !== 'done';
+  const div = document.createElement('div');
+  div.className = 'card' + (isOverdue ? ' overdue' : '');
+  div.draggable = true;
+  div.dataset.id = task.id;
+  div.addEventListener('dragstart', () => { draggingId = task.id; div.classList.add('dragging'); });
+  div.addEventListener('dragend',   () => div.classList.remove('dragging'));
+
+  const tagsHtml = task.tags.map(g => `<span class="tag">${g}</span>`).join('');
+  const dueDateHtml = task.due_date
+    ? `<span class="due-date${isOverdue ? ' overdue' : ''}">📅 ${task.due_date}${isOverdue ? ' ⚠ overdue' : ''}</span>`
+    : '';
+
+  div.innerHTML = `
+    <div class="card-title">${esc(task.title)}</div>
+    ${task.description ? `<div class="card-desc">${esc(task.description)}</div>` : ''}
+    <div class="card-meta">${tagsHtml}${dueDateHtml}</div>
+    <div class="card-actions">
+      <button class="btn btn-primary btn-small" onclick="openModal('${task.id}')">Edit</button>
+      <button class="btn btn-danger btn-small"  onclick="deleteTask('${task.id}')">Delete</button>
+    </div>`;
+  return div;
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(id = null) {
+  editingId = id;
+  document.getElementById('modal-title').textContent = id ? 'Edit Task' : 'New Task';
+  document.getElementById('status-field').style.display = id ? 'block' : 'none';
+
+  if (id) {
+    const t = allTasks.find(t => t.id === id);
+    document.getElementById('f-title').value  = t.title;
+    document.getElementById('f-desc').value   = t.description;
+    document.getElementById('f-due').value    = t.due_date || '';
+    document.getElementById('f-tags').value   = t.tags.join(', ');
+    document.getElementById('f-status').value = t.status;
+  } else {
+    document.getElementById('f-title').value  = '';
+    document.getElementById('f-desc').value   = '';
+    document.getElementById('f-due').value    = '';
+    document.getElementById('f-tags').value   = '';
+  }
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('f-title').focus();
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('overlay')) return;
+  document.getElementById('overlay').classList.remove('active');
+  editingId = null;
+}
+
+async function saveTask() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { toast('Title is required.', true); return; }
+
+  const tags = document.getElementById('f-tags').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  const body = {
+    title,
+    description: document.getElementById('f-desc').value.trim(),
+    due_date: document.getElementById('f-due').value || null,
+    tags,
+  };
+
+  try {
+    if (editingId) {
+      body.status = document.getElementById('f-status').value;
+      await fetch(`${API}/tasks/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      toast('Task updated.');
+    } else {
+      await fetch(`${API}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      toast('Task created.');
+    }
+    document.getElementById('overlay').classList.remove('active');
+    editingId = null;
+    await fetchTasks();
+  } catch (e) {
+    toast('Error saving task.', true);
+  }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+  toast('Task deleted.');
+  await fetchTasks();
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drop-target');
+}
+document.querySelectorAll('.column').forEach(col => {
+  col.addEventListener('dragleave', () => col.classList.remove('drop-target'));
+});
+
+async function onDrop(e, newStatus) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-target');
+  if (!draggingId) return;
+
+  const task = allTasks.find(t => t.id === draggingId);
+  if (!task || task.status === newStatus) return;
+
+  try {
+    const res = await fetch(`${API}/tasks/${draggingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      toast(err.detail || 'Invalid transition.', true);
+    } else {
+      await fetchTasks();
+    }
+  } catch (e) {
+    toast('Error moving task.', true);
+  }
+  draggingId = null;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (isError ? ' error' : '') + ' show';
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+fetchTasks();
+</script>
+</body>
+</html>
