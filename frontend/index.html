@@ -312,22 +312,29 @@ async function saveTask() {
   };
 
   try {
+    let res;
     if (editingId) {
       body.status = document.getElementById('f-status').value;
-      await fetch(`${API}/tasks/${editingId}`, {
+      res = await fetch(`${API}/tasks/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      toast('Task updated.');
     } else {
-      await fetch(`${API}/tasks`, {
+      res = await fetch(`${API}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      toast('Task created.');
     }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      toast(err?.detail ? String(err.detail) : 'Could not save task.', true);
+      return; // keep the modal open so nothing looks "saved" when it wasn't
+    }
+
+    toast(editingId ? 'Task updated.' : 'Task created.');
     document.getElementById('overlay').classList.remove('active');
     editingId = null;
     await fetchTasks();
