@@ -9,7 +9,7 @@ A task management API with a Kanban board frontend, built with FastAPI and vanil
 
 ## Features
 - CRUD for tasks (create, read, update, delete)
-- Status transitions: `todo → in_progress → done` (or revert to `todo`)
+- Status transitions: `todo → in_progress → done`, and `done → in_progress` (reopen a completed task)
 - **Feature A — Due dates:** optional due date per task, `?overdue=true` filter
 - **Feature B — Tags:** list of string labels per task, `?tag=<label>` filter
 - Filters are combinable: `?overdue=true&tag=bug`
@@ -40,7 +40,7 @@ Open `frontend/index.html` in your browser (no build step required).
 ```bash
 pytest -v
 ```
-Expected: 43 tests, all passing.
+Expected: 44 tests, all passing.
 
 ---
 

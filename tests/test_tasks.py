@@ -121,16 +121,26 @@ def test_valid_transition_in_progress_to_done(client, make_task):
     assert res.json()["status"] == "done"
 
 
-def test_valid_transition_in_progress_to_todo(client, make_task):
+def test_valid_transition_done_to_in_progress(client, make_task):
+    """A completed task can be reopened."""
+    task = make_task()
+    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
+    client.put(f"/tasks/{task['id']}", json={"status": "done"})
+    res = client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
+    assert res.status_code == 200
+    assert res.json()["status"] == "in_progress"
+
+
+def test_invalid_transition_in_progress_to_todo(client, make_task):
+    """Break test: in_progress → todo is not allowed (only done → in_progress reopens)."""
     task = make_task()
     client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
     res = client.put(f"/tasks/{task['id']}", json={"status": "todo"})
-    assert res.status_code == 200
-    assert res.json()["status"] == "todo"
+    assert res.status_code == 400
 
 
 def test_invalid_transition_todo_to_done(client, make_task):
-    """Break test: todo → done is not allowed."""
+    """Break test: todo → done is not allowed (cannot skip in_progress)."""
     task = make_task()
     res = client.put(f"/tasks/{task['id']}", json={"status": "done"})
     assert res.status_code == 400
@@ -145,8 +155,8 @@ def test_invalid_transition_done_to_todo(client, make_task):
     assert res.status_code == 400
 
 
-def test_same_status_is_allowed(client, make_task):
-    """Updating to the same status is a no-op and should succeed."""
+def test_same_status_is_rejected(client, make_task):
+    """Break test: updating to the same status is a no-op and must be rejected."""
     task = make_task()
     res = client.put(f"/tasks/{task['id']}", json={"status": "todo"})
-    assert res.status_code == 200
+    assert res.status_code == 400

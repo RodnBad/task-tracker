@@ -66,3 +66,19 @@
 **Decision:** Option 3. Added a shared `_clean_tags()` helper in `models.py`, wired into both `TaskCreate` and `TaskUpdate` via `@field_validator("tags")`. Tags are stripped of surrounding whitespace, rejected if empty after stripping, capped at 10 tags per task, and capped at 30 characters per tag.
 
 **Consequences:** `POST /tasks` and `PUT /tasks/{id}` now return 422 for `["", "  "]`-style tags instead of silently storing them. The 10/30 limits are arbitrary but reasonable for a label field — documented here so they're easy to revisit if a real use case needs more.
+
+---
+
+## ADR-06: Fix status-transition rules to match the Module 2 spec (out of mid-course scope, but a real bug)
+
+**Context:** While manually testing the app, dragging a `done` card back to `in_progress` on the Kanban board failed. This was surprising, so I checked what the course actually specified for this logic (it predates the mid-course project — it's Module 2/3 business logic, not one of the two chosen features). The Module 2 Lecture Notes, Prompt Library, and quiz answer key all specify the same transition table: `todo→in_progress`, `in_progress→done`, and `done→in_progress` (reopen) are valid; `todo→done`, `done→todo`, `in_progress→todo`, and same-status no-ops are all rejected.
+
+**What was actually implemented:** `business_rules.py` allowed `in_progress→todo` (not in the spec) instead of `done→in_progress` (which the spec requires), and `main.py` silently skipped validation entirely for same-status updates (spec says these should be rejected).
+
+**Options considered:**
+1. Leave it — it's not one of the two features I was asked to add, and reopening isn't strictly required by the mid-course brief.
+2. Fix it to match the official Module 2 spec exactly, since it's a genuine deviation from documented course requirements, not a debatable design choice.
+
+**Decision:** Option 2. Corrected `VALID_TRANSITIONS` in `business_rules.py`, removed the same-status skip in `main.py`'s `update_task`, and updated/added tests in `test_tasks.py` accordingly (`test_valid_transition_done_to_in_progress`, `test_invalid_transition_in_progress_to_todo`, `test_same_status_is_rejected`).
+
+**Consequences:** A `done` task can now be reopened to `in_progress` (matches real Kanban tools and the course spec). `in_progress→todo` "unblock" is no longer allowed — if a task was accidentally moved to `in_progress`, the only way back is via the (now-removed) revert path; this matches the spec even though it's slightly less forgiving in the UI. Same-status PUTs now return 400 instead of silently succeeding.

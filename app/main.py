@@ -68,11 +68,11 @@ def get_task(task_id: str) -> Task:
 
 @app.put("/tasks/{task_id}", response_model=Task, tags=["tasks"])
 def update_task(task_id: str, payload: TaskUpdate) -> Task:
-    """Update a task. Status transitions: todo->in_progress->done, in_progress->todo."""
+    """Update a task. Status transitions: todo->in_progress->done, done->in_progress (reopen)."""
     task = storage.get_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
-    if payload.status is not None and payload.status != task.status:
+    if payload.status is not None:
         try:
             assert_valid_transition(task.status, payload.status)
         except ValueError as exc:

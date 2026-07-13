@@ -37,7 +37,7 @@ frontend/
   index.html         # Kanban board (single file, no build step)
 tests/
   conftest.py        # Fixtures (client, make_task, autouse clear_storage)
-  test_tasks.py      # Base CRUD + business rule tests (20 tests)
+  test_tasks.py      # Base CRUD + business rule tests (21 tests)
   test_due_dates.py  # Feature A: due dates + overdue filter (10 tests)
   test_tags.py       # Feature B: tags + tag filter + validation (13 tests)
 docs/midcourse/      # Mid-course project documentation

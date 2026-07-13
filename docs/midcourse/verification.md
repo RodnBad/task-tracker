@@ -53,6 +53,18 @@ Two of the required Break Tests, showing the behavior contract before and after 
 
 ---
 
+## Base App Correctness Fix: Status Transition Rules
+
+Not one of the two mid-course features, but found and fixed during manual testing of this project (see [mini-adr.md](mini-adr.md), ADR-06 for details).
+
+**Contract (per Module 2 Lecture Notes / Prompt Library / Quiz answer key):** `todo → in_progress`, `in_progress → done`, and `done → in_progress` (reopen) are the only valid transitions. `todo → done`, `done → todo`, `in_progress → todo`, and same-status no-ops must all be rejected with `400`.
+
+- Before fix: `done → in_progress` was rejected (should have been allowed); `in_progress → todo` was allowed (should have been rejected); same-status updates always succeeded (should have been rejected).
+- After fix: manually reopened a `done` task via `PUT /tasks/{id} {"status": "in_progress"}` → `200`, task now `in_progress`. Attempted `in_progress → todo` → `400`. Attempted a same-status PUT → `400`.
+- `pytest tests/test_tasks.py -k transition -v` and `-k same_status` → all passing.
+
+---
+
 ## Test Suite
 
 ```
@@ -60,9 +72,9 @@ pytest -v
 ```
 
 **Results:**
-- test_tasks.py — 20 tests passed
+- test_tasks.py — 21 tests passed
 - test_due_dates.py — 10 tests passed
 - test_tags.py — 13 tests passed
-- **Total: 43 tests, 0 failures**
+- **Total: 44 tests, 0 failures**
 
 Baseline (before this project's changes, Modules 1-3 CRUD only): 20 tests, all passing.
