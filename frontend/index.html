@@ -346,7 +346,14 @@ async function saveTask() {
   try {
     let res;
     if (editingId) {
-      body.status = document.getElementById('f-status').value;
+      const original = allTasks.find(t => t.id === editingId);
+      const selectedStatus = document.getElementById('f-status').value;
+      // Only send status when it actually changed — the backend rejects
+      // same-status "no-op" transitions with 422, so echoing back the
+      // unchanged status on every edit would break plain field edits.
+      if (!original || selectedStatus !== original.status) {
+        body.status = selectedStatus;
+      }
       res = await fetch(`${API}/tasks/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
