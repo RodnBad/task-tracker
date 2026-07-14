@@ -231,6 +231,17 @@ let allTasks = [];
 let editingId = null;
 let draggingId = null;
 
+// Sort by priority first (High -> Medium -> Low), then by due date ascending
+// within the same priority (soonest first; no-due-date tasks sort last).
+function compareTasks(a, b) {
+  const byPriority = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+  if (byPriority !== 0) return byPriority;
+  if (a.due_date && b.due_date) return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0;
+  if (a.due_date) return -1;
+  if (b.due_date) return 1;
+  return 0;
+}
+
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 async function fetchTasks() {
   try {
@@ -256,8 +267,7 @@ function renderBoard() {
     const col = document.getElementById(`col-${status}`);
     // remove cards but keep header
     Array.from(col.querySelectorAll('.card')).forEach(c => c.remove());
-    const filtered = tasks.filter(t => t.status === status)
-      .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+    const filtered = tasks.filter(t => t.status === status).sort(compareTasks);
     document.getElementById(`count-${status}`).textContent = filtered.length;
     filtered.forEach(t => col.appendChild(buildCard(t, today)));
   });
