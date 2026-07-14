@@ -111,9 +111,11 @@ pytest -v
 ```
 
 **Results:**
-- test_tasks.py — 30 tests passed
+- test_tasks.py — 29 tests passed
 - test_due_dates.py — 10 tests passed
-- test_tags.py — 13 tests passed
+- test_tags.py — 14 tests passed
 - **Total: 53 tests, 0 failures**
+
+*(Corrected during the final-project release-evidence check — the per-file breakdown had test_tasks.py and test_tags.py's counts swapped; the grand total of 53 was coincidentally still correct. See [`docs/release-evidence.md`](../release-evidence.md).)*
 
 Baseline (before this project's changes, Modules 1-3 CRUD only): 20 tests, all passing.

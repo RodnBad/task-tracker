@@ -3,6 +3,11 @@ __pycache__/
 *.pyo
 .env
 .env.*
+.git/
+.gitignore
+.venv/
+venv/
+.pytest_cache/
 tests/
 frontend/
 docs/

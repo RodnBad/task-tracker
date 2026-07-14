@@ -24,3 +24,43 @@ jobs:
 
       - name: Run tests
         run: pytest -v --tb=short
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t task-tracker .
+
+      - name: Run container
+        run: docker run -d -p 8000:8000 --name task-tracker-test task-tracker
+
+      - name: Wait for /health to return 200
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Health check never succeeded"
+          docker logs task-tracker-test
+          exit 1
+
+      - name: Confirm the process runs as a non-root user
+        run: |
+          CONTAINER_USER=$(docker exec task-tracker-test whoami)
+          echo "Container running as: $CONTAINER_USER"
+          if [ "$CONTAINER_USER" = "root" ]; then
+            echo "Container is running as root — expected a non-root user."
+            exit 1
+          fi
+
+      - name: Stop and remove container
+        if: always()
+        run: docker rm -f task-tracker-test

@@ -39,7 +39,7 @@ tests/
   conftest.py        # Fixtures (client, make_task, autouse clear_storage)
   test_tasks.py      # Base CRUD + business rule tests (30 tests)
   test_due_dates.py  # Feature A: due dates + overdue filter (10 tests)
-  test_tags.py       # Feature B: tags + tag filter + validation (13 tests)
+  test_tags.py       # Feature B: tags + tag filter + validation (14 tests)
 docs/midcourse/      # Mid-course project documentation
 ```
 

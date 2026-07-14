@@ -3,7 +3,26 @@
 A task management API with a Kanban board frontend, built with FastAPI and vanilla JavaScript.
 
 **Course:** AUB AI-Assisted Coding  
-**Submission branch:** `mid-course-project`
+**Mid-course submission branch:** `mid-course-project`
+**Final project submission branch:** `final-project`
+
+---
+
+## Final Project (End-of-Course Release Check)
+
+This branch (`final-project`) extends `mid-course-project` with release-readiness evidence and AI-review documentation — no new product features were added, per the assignment's "protect app/frontend" rule.
+
+**Run it** — same as [Quick Start](#quick-start) below: `pip install -r requirements-dev.txt`, then `uvicorn app.main:app --reload`.
+**Test it** — `pytest -v` (54 tests, all passing — see [Running Tests](#running-tests)).
+**Containerize it** — `docker build -t task-tracker .` then `docker run -p 8000:8000 task-tracker`; health check at `GET /health` (see [Docker](#docker)).
+
+**Evidence files:**
+- [`docs/release-evidence.md`](docs/release-evidence.md) — CI, Docker, and doc-claim verification
+- [`docs/final-ai-review.md`](docs/final-ai-review.md) — AI code-review and security-review findings, graded, plus ownership statement
+- [`docs/ai-playbook.md`](docs/ai-playbook.md) — personal AI playbook
+- [`AGENTS.md`](AGENTS.md) — guardrails for any AI agent working in this repo
+
+**AI-assistance summary:** All code in this repo (backend, frontend, tests, docs) was written by Claude (Anthropic) under my direction and review, following the course's prompt/review/verify workflow — see `docs/midcourse/prompt-log.md` and `docs/final-ai-review.md` for the detailed record of what was accepted, edited, or rejected.
 
 ---
 
@@ -41,7 +60,7 @@ Open `frontend/index.html` in your browser (no build step required). CORS is sco
 ```bash
 pytest -v
 ```
-Expected: 53 tests, all passing.
+Expected: 54 tests, all passing.
 
 ---
 
@@ -50,6 +69,7 @@ Expected: 53 tests, all passing.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Health check |
+| GET | `/health` | Container/release health check (used by the Dockerfile `HEALTHCHECK`) |
 | POST | `/tasks` | Create task |
 | GET | `/tasks` | List tasks (supports `?overdue=true` and `?tag=<label>`) |
 | GET | `/tasks/{id}` | Get task by ID |
@@ -77,6 +97,7 @@ curl "http://localhost:8000/tasks?overdue=true&tag=bug"
 docker build -t task-tracker .
 docker run -p 8000:8000 task-tracker
 ```
+Multi-stage build (builder + slim runtime), runs as a non-root user, `HEALTHCHECK` probes `GET /health` every 30s. CI builds and runs the image on every push (see the `docker` job in `.github/workflows/ci.yml`) — see [`docs/release-evidence.md`](docs/release-evidence.md) for verification details.
 
 ---
 

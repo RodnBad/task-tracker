@@ -37,6 +37,12 @@ def health_check() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/health", tags=["health"])
+def health() -> dict:
+    """Container/release health check — used by the Dockerfile HEALTHCHECK."""
+    return {"status": "ok"}
+
+
 @app.post("/tasks", response_model=Task, status_code=201, tags=["tasks"])
 def create_task(payload: TaskCreate) -> Task:
     """Create a new task."""

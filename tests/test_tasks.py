@@ -9,6 +9,13 @@ def test_health(client):
     assert res.json() == {"status": "ok"}
 
 
+def test_health_endpoint(client):
+    """Dedicated /health endpoint used by the Dockerfile HEALTHCHECK."""
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok"}
+
+
 # ── Create ─────────────────────────────────────────────────────────────────────
 
 def test_create_task_minimal(client):
@@ -144,6 +151,21 @@ def test_update_priority_and_assignee(client, make_task):
     data = res.json()
     assert data["priority"] == "Low"
     assert data["assignee"] == "Sam"
+
+
+def test_whitespace_only_assignee_normalized_to_none(client):
+    """Found during the Part C security review: unlike title/tags, assignee had
+    no validator, so a whitespace-only assignee was stored as-is instead of
+    being treated as "unassigned"."""
+    res = client.post("/tasks", json={"title": "X", "assignee": "   "})
+    assert res.status_code == 201
+    assert res.json()["assignee"] is None
+
+
+def test_assignee_is_trimmed(client):
+    res = client.post("/tasks", json={"title": "X", "assignee": "  Rodney  "})
+    assert res.status_code == 201
+    assert res.json()["assignee"] == "Rodney"
 
 
 # ── Delete ─────────────────────────────────────────────────────────────────────
