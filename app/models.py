@@ -51,6 +51,14 @@ def _clean_title(title: str) -> str:
     return trimmed
 
 
+def _clean_assignee(assignee: Optional[str]) -> Optional[str]:
+    """Trim whitespace; a whitespace-only assignee means "unassigned" (None)."""
+    if assignee is None:
+        return None
+    trimmed = assignee.strip()
+    return trimmed or None
+
+
 class TaskCreate(BaseModel):
     """Payload for creating a new task."""
     model_config = ConfigDict(extra="forbid")
@@ -67,6 +75,11 @@ class TaskCreate(BaseModel):
     @classmethod
     def validate_title(cls, value: str) -> str:
         return _clean_title(value)
+
+    @field_validator("assignee")
+    @classmethod
+    def validate_assignee(cls, value: Optional[str]) -> Optional[str]:
+        return _clean_assignee(value)
 
     @field_validator("tags")
     @classmethod
@@ -92,6 +105,11 @@ class TaskUpdate(BaseModel):
         if value is None:
             return value
         return _clean_title(value)
+
+    @field_validator("assignee")
+    @classmethod
+    def validate_assignee(cls, value: Optional[str]) -> Optional[str]:
+        return _clean_assignee(value)
 
     @field_validator("tags")
     @classmethod

@@ -282,7 +282,7 @@ function buildCard(task, today) {
   div.addEventListener('dragstart', () => { draggingId = task.id; div.classList.add('dragging'); });
   div.addEventListener('dragend',   () => div.classList.remove('dragging'));
 
-  const tagsHtml = task.tags.map(g => `<span class="tag">${g}</span>`).join('');
+  const tagsHtml = task.tags.map(g => `<span class="tag">${esc(g)}</span>`).join('');
   const dueDateHtml = task.due_date
     ? `<span class="due-date${isOverdue ? ' overdue' : ''}">📅 ${task.due_date}${isOverdue ? ' ⚠ overdue' : ''}</span>`
     : '';
