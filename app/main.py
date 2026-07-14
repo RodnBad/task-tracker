@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import storage
 from app.business_rules import assert_valid_transition
-from app.models import Task, TaskCreate, TaskUpdate
+from app.models import Task, TaskCreate, TaskStatus, TaskUpdate
 
 app = FastAPI(
     title="Task Tracker",
@@ -16,9 +16,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Scoped to local dev origins only (see docs/midcourse/mini-adr.md, ADR-07) —
+# not "*", per the Module 3 CORS guidance.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5500", "http://127.0.0.1:5500",
+        "http://localhost:8080", "http://127.0.0.1:8080",
+        "http://localhost:9500", "http://127.0.0.1:9500",
+        "null",  # frontend/index.html opened directly via file://
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,6 +43,9 @@ def create_task(payload: TaskCreate) -> Task:
     task = Task(
         title=payload.title,
         description=payload.description,
+        status=payload.status,
+        priority=payload.priority,
+        assignee=payload.assignee,
         due_date=payload.due_date,
         tags=payload.tags,
     )
@@ -51,7 +61,7 @@ def list_tasks(
     tasks = storage.get_all()
     if overdue is True:
         today = date.today()
-        tasks = [t for t in tasks if t.due_date and t.due_date < today and t.status != "done"]
+        tasks = [t for t in tasks if t.due_date and t.due_date < today and t.status != TaskStatus.DONE]
     if tag is not None:
         tasks = [t for t in tasks if tag in t.tags]
     return tasks
@@ -66,9 +76,9 @@ def get_task(task_id: str) -> Task:
     return task
 
 
-@app.put("/tasks/{task_id}", response_model=Task, tags=["tasks"])
+@app.patch("/tasks/{task_id}", response_model=Task, tags=["tasks"])
 def update_task(task_id: str, payload: TaskUpdate) -> Task:
-    """Update a task. Status transitions: todo->in_progress->done, done->in_progress (reopen)."""
+    """Update a task. Status transitions: ToDo->InProgress->Done, Done->InProgress (reopen)."""
     task = storage.get_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
@@ -76,7 +86,7 @@ def update_task(task_id: str, payload: TaskUpdate) -> Task:
         try:
             assert_valid_transition(task.status, payload.status)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+            raise HTTPException(status_code=422, detail=str(exc))
     update_dict = {k: getattr(payload, k) for k in payload.model_fields_set}
     updated = task.model_copy(update=update_dict)
     return storage.save(updated)

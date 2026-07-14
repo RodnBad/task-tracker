@@ -16,7 +16,9 @@ def test_create_task_minimal(client):
     assert res.status_code == 201
     data = res.json()
     assert data["title"] == "Buy milk"
-    assert data["status"] == "todo"
+    assert data["status"] == "ToDo"
+    assert data["priority"] == "Medium"
+    assert data["assignee"] is None
     assert data["description"] == ""
     assert data["tags"] == []
     assert data["due_date"] is None
@@ -27,11 +29,15 @@ def test_create_task_full(client):
     res = client.post("/tasks", json={
         "title": "Full task",
         "description": "A description",
+        "priority": "High",
+        "assignee": "Rodney",
         "due_date": "2099-12-31",
         "tags": ["backend", "urgent"],
     })
     assert res.status_code == 201
     data = res.json()
+    assert data["priority"] == "High"
+    assert data["assignee"] == "Rodney"
     assert data["due_date"] == "2099-12-31"
     assert data["tags"] == ["backend", "urgent"]
 
@@ -43,6 +49,34 @@ def test_create_task_missing_title(client):
 
 def test_create_task_empty_title(client):
     res = client.post("/tasks", json={"title": ""})
+    assert res.status_code == 422
+
+
+def test_create_task_whitespace_title_rejected(client):
+    """Break test: a whitespace-only title is rejected."""
+    res = client.post("/tasks", json={"title": "   "})
+    assert res.status_code == 422
+
+
+def test_create_task_title_too_long_rejected(client):
+    res = client.post("/tasks", json={"title": "x" * 201})
+    assert res.status_code == 422
+
+
+def test_create_task_rejects_unknown_field(client):
+    """Break test: extra='forbid' means unrecognized fields are rejected, not ignored."""
+    res = client.post("/tasks", json={"title": "X", "made_up": "value"})
+    assert res.status_code == 422
+
+
+def test_create_task_id_not_client_settable(client):
+    """Break test: a client-supplied id must be rejected, not silently accepted."""
+    res = client.post("/tasks", json={"title": "X", "id": "abc"})
+    assert res.status_code == 422
+
+
+def test_create_task_invalid_priority_rejected(client):
+    res = client.post("/tasks", json={"title": "X", "priority": "Urgent"})
     assert res.status_code == 422
 
 
@@ -79,14 +113,37 @@ def test_get_task_not_found(client):
 
 def test_update_task_title(client, make_task):
     task = make_task("Old title")
-    res = client.put(f"/tasks/{task['id']}", json={"title": "New title"})
+    res = client.patch(f"/tasks/{task['id']}", json={"title": "New title"})
     assert res.status_code == 200
     assert res.json()["title"] == "New title"
 
 
 def test_update_task_not_found(client):
-    res = client.put("/tasks/ghost", json={"title": "X"})
+    res = client.patch("/tasks/ghost", json={"title": "X"})
     assert res.status_code == 404
+
+
+def test_update_task_whitespace_title_rejected(client, make_task):
+    """Break test: a whitespace-only title is rejected on update too."""
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"title": "   "})
+    assert res.status_code == 422
+
+
+def test_update_task_created_at_not_client_settable(client, make_task):
+    """Break test: created_at is not a real field — extra='forbid' rejects it."""
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"created_at": "2025-01-01T00:00:00Z"})
+    assert res.status_code == 422
+
+
+def test_update_priority_and_assignee(client, make_task):
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"priority": "Low", "assignee": "Sam"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["priority"] == "Low"
+    assert data["assignee"] == "Sam"
 
 
 # ── Delete ─────────────────────────────────────────────────────────────────────
@@ -108,55 +165,61 @@ def test_delete_task_not_found(client):
 
 def test_valid_transition_todo_to_in_progress(client, make_task):
     task = make_task()
-    res = client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
     assert res.status_code == 200
-    assert res.json()["status"] == "in_progress"
+    assert res.json()["status"] == "InProgress"
 
 
 def test_valid_transition_in_progress_to_done(client, make_task):
     task = make_task()
-    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
-    res = client.put(f"/tasks/{task['id']}", json={"status": "done"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "Done"})
     assert res.status_code == 200
-    assert res.json()["status"] == "done"
+    assert res.json()["status"] == "Done"
 
 
 def test_valid_transition_done_to_in_progress(client, make_task):
     """A completed task can be reopened."""
     task = make_task()
-    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
-    client.put(f"/tasks/{task['id']}", json={"status": "done"})
-    res = client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "Done"})
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
     assert res.status_code == 200
-    assert res.json()["status"] == "in_progress"
+    assert res.json()["status"] == "InProgress"
 
 
 def test_invalid_transition_in_progress_to_todo(client, make_task):
-    """Break test: in_progress → todo is not allowed (only done → in_progress reopens)."""
+    """Break test: InProgress → ToDo is not allowed (only Done → InProgress reopens)."""
     task = make_task()
-    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
-    res = client.put(f"/tasks/{task['id']}", json={"status": "todo"})
-    assert res.status_code == 400
+    client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "ToDo"})
+    assert res.status_code == 422
 
 
 def test_invalid_transition_todo_to_done(client, make_task):
-    """Break test: todo → done is not allowed (cannot skip in_progress)."""
+    """Break test: ToDo → Done is not allowed (cannot skip InProgress)."""
     task = make_task()
-    res = client.put(f"/tasks/{task['id']}", json={"status": "done"})
-    assert res.status_code == 400
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "Done"})
+    assert res.status_code == 422
 
 
 def test_invalid_transition_done_to_todo(client, make_task):
-    """Break test: done → todo is not allowed."""
+    """Break test: Done → ToDo is not allowed."""
     task = make_task()
-    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
-    client.put(f"/tasks/{task['id']}", json={"status": "done"})
-    res = client.put(f"/tasks/{task['id']}", json={"status": "todo"})
-    assert res.status_code == 400
+    client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "Done"})
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "ToDo"})
+    assert res.status_code == 422
 
 
 def test_same_status_is_rejected(client, make_task):
     """Break test: updating to the same status is a no-op and must be rejected."""
     task = make_task()
-    res = client.put(f"/tasks/{task['id']}", json={"status": "todo"})
-    assert res.status_code == 400
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "ToDo"})
+    assert res.status_code == 422
+
+
+def test_invalid_status_value_rejected(client, make_task):
+    task = make_task()
+    res = client.patch(f"/tasks/{task['id']}", json={"status": "Whatever"})
+    assert res.status_code == 422

@@ -82,3 +82,24 @@
 **Decision:** Option 2. Corrected `VALID_TRANSITIONS` in `business_rules.py`, removed the same-status skip in `main.py`'s `update_task`, and updated/added tests in `test_tasks.py` accordingly (`test_valid_transition_done_to_in_progress`, `test_invalid_transition_in_progress_to_todo`, `test_same_status_is_rejected`).
 
 **Consequences:** A `done` task can now be reopened to `in_progress` (matches real Kanban tools and the course spec). `in_progress→todo` "unblock" is no longer allowed — if a task was accidentally moved to `in_progress`, the only way back is via the (now-removed) revert path; this matches the spec even though it's slightly less forgiving in the UI. Same-status PUTs now return 400 instead of silently succeeding.
+
+---
+
+## ADR-07: Full Module 2 spec compliance fix — priority, assignee, PATCH, 422, extra=forbid, whitespace-title, scoped CORS
+
+**Context:** ADR-06 above fixed one Module 2 deviation (status transitions). A fuller audit against the course's own Lecture Notes, Prompt Library, and — critically — the instructor's executable `verify_a.py` script (in the Module 2 folder) turned up more: the app was missing a required `TaskPriority` enum and `assignee` field entirely (it had `due_date`/`tags` instead, which are the two features I was separately asked to add for the mid-course project), used `PUT` where the spec teaches `PATCH`, returned `400` where the spec teaches `422`, had no Pydantic `extra="forbid"` (so a client-sent `id` or `created_at` was silently ignored instead of rejected), and accepted whitespace-only titles (e.g. `" "`) that should be rejected. CORS was also wide open (`allow_origins=["*"]`) where Module 3 materials specify scoping to local dev origins.
+
+The clinching piece of evidence: my own `MyNotes/AAC_Course_Summary Old.docx` (an earlier draft of my own notes) describes the data model exactly as the app currently had it — no `TaskPriority`, `400`, `PUT`. My later, corrected notes (`AAC_Course_Summary.md`) describe the actual spec (`TaskPriority`, `422`, `PATCH`). So the app was built against an early, incorrect understanding that was later corrected in my own notes but never backported to the code.
+
+**Options considered:**
+1. Leave it — neither the mid-course brief nor the end-of-course brief actually requires `priority`/`assignee`/`PATCH`/`422`, and the end-of-course project explicitly restricts `app/`/`frontend/` changes to small bug fixes only once that project starts.
+2. Fix it now, before the end-of-course project's branch/restrictions exist — since that project's "small changes only" rule applies to its own work window, not to closing out Module 1-3 properly beforehand.
+
+**Decision:** Option 2. This is a confirmed, real gap (not a defensible scope choice — my own corrected notes prove I later learned the actual spec), and fixing it now has no downside since the end-of-course project hasn't started. Changes:
+- `app/models.py`: added `TaskPriority` enum (`LOW`/`MEDIUM`/`HIGH` → `"Low"`/`"Medium"`/`"High"`), renamed `TaskStatus` members/values to `TODO="ToDo"`, `IN_PROGRESS="InProgress"`, `DONE="Done"`; added `assignee: Optional[str]`; added `model_config = ConfigDict(extra="forbid")` to `TaskCreate`/`TaskUpdate`; added a title validator rejecting whitespace-only strings.
+- `app/business_rules.py`: transition table updated to the new enum members (same logical transitions as ADR-06, just correct casing).
+- `app/main.py`: `PUT` → `PATCH`; invalid-transition `400` → `422`; CORS scoped to `localhost:5500/8080/9500` + `null` (for `file://`) instead of `"*"`.
+- `frontend/index.html`: added Priority (select) and Assignee (text) fields to the modal, priority pill + assignee badge on cards, cards sorted High→Medium→Low within each column, all status literals updated to `ToDo`/`InProgress`/`Done`, `fetch()` calls switched to `PATCH`.
+- `tests/`: updated all `.put(` calls to `.patch(`, all status literals, `400`→`422` assertions; added tests for priority/assignee defaults, `extra="forbid"` rejection (unknown field, client-supplied `id`/`created_at`), and whitespace-only title rejection on create and update.
+
+**Consequences:** Running the instructor's `verify_a.py` now passes all 8 checks (previously failed immediately on `ImportError: cannot import name 'TaskPriority'`). Test suite grew from 44 to 53 tests, all passing. CORS is no longer wildcard-open — anyone serving the frontend from a port not in the allow-list needs to add it in `app/main.py`. This was scoped as pure Module 1-3 base-app correctness work, done before any end-of-course-project branch existed, so it doesn't count against that project's later "small changes only" budget.

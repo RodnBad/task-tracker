@@ -94,6 +94,16 @@
       background: #f0f0f0; padding: 2px 6px; border-radius: 4px;
     }
     .due-date.overdue { background: #fde8e8; color: #c0392b; font-weight: bold; }
+    .assignee {
+      font-size: 0.72rem; color: #555;
+      background: #eee; padding: 2px 8px; border-radius: 10px;
+    }
+    .priority {
+      font-size: 0.72rem; font-weight: bold; padding: 2px 8px; border-radius: 10px;
+    }
+    .priority-High   { background: #fde8e8; color: #c0392b; }
+    .priority-Medium { background: #fdf3d8; color: #9c7a1e; }
+    .priority-Low    { background: #e6f4ea; color: #2e7d47; }
     .card-actions { margin-top: 8px; display: flex; gap: 6px; }
 
     .drop-target { border: 2px dashed #2e75b6; background: #eaf3fb; }
@@ -153,14 +163,14 @@
 </div>
 
 <div class="board">
-  <div class="column col-todo" id="col-todo" ondragover="onDragOver(event)" ondrop="onDrop(event,'todo')">
-    <div class="column-header">To Do <span class="count" id="count-todo">0</span></div>
+  <div class="column col-todo" id="col-ToDo" ondragover="onDragOver(event)" ondrop="onDrop(event,'ToDo')">
+    <div class="column-header">To Do <span class="count" id="count-ToDo">0</span></div>
   </div>
-  <div class="column col-ip" id="col-in_progress" ondragover="onDragOver(event)" ondrop="onDrop(event,'in_progress')">
-    <div class="column-header">In Progress <span class="count" id="count-in_progress">0</span></div>
+  <div class="column col-ip" id="col-InProgress" ondragover="onDragOver(event)" ondrop="onDrop(event,'InProgress')">
+    <div class="column-header">In Progress <span class="count" id="count-InProgress">0</span></div>
   </div>
-  <div class="column col-done" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event,'done')">
-    <div class="column-header">Done <span class="count" id="count-done">0</span></div>
+  <div class="column col-done" id="col-Done" ondragover="onDragOver(event)" ondrop="onDrop(event,'Done')">
+    <div class="column-header">Done <span class="count" id="count-Done">0</span></div>
   </div>
 </div>
 
@@ -177,6 +187,18 @@
       <textarea id="f-desc" placeholder="Optional description"></textarea>
     </div>
     <div class="field">
+      <label>Priority</label>
+      <select id="f-priority">
+        <option value="Low">Low</option>
+        <option value="Medium" selected>Medium</option>
+        <option value="High">High</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Assignee</label>
+      <input id="f-assignee" type="text" placeholder="Optional" />
+    </div>
+    <div class="field">
       <label>Due Date</label>
       <input id="f-due" type="date" />
     </div>
@@ -188,9 +210,9 @@
     <div class="field" id="status-field" style="display:none">
       <label>Status</label>
       <select id="f-status">
-        <option value="todo">To Do</option>
-        <option value="in_progress">In Progress</option>
-        <option value="done">Done</option>
+        <option value="ToDo">To Do</option>
+        <option value="InProgress">In Progress</option>
+        <option value="Done">Done</option>
       </select>
     </div>
     <div class="modal-actions">
@@ -204,6 +226,7 @@
 
 <script>
 const API = 'http://localhost:8000';
+const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
 let allTasks = [];
 let editingId = null;
 let draggingId = null;
@@ -227,20 +250,21 @@ function renderBoard() {
 
   let tasks = [...allTasks];
   if (tagFilter)   tasks = tasks.filter(t => t.tags.some(g => g.toLowerCase().includes(tagFilter)));
-  if (overdueOnly) tasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done');
+  if (overdueOnly) tasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'Done');
 
-  ['todo','in_progress','done'].forEach(status => {
+  ['ToDo','InProgress','Done'].forEach(status => {
     const col = document.getElementById(`col-${status}`);
     // remove cards but keep header
     Array.from(col.querySelectorAll('.card')).forEach(c => c.remove());
-    const filtered = tasks.filter(t => t.status === status);
+    const filtered = tasks.filter(t => t.status === status)
+      .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
     document.getElementById(`count-${status}`).textContent = filtered.length;
     filtered.forEach(t => col.appendChild(buildCard(t, today)));
   });
 }
 
 function buildCard(task, today) {
-  const isOverdue = task.due_date && task.due_date < today && task.status !== 'done';
+  const isOverdue = task.due_date && task.due_date < today && task.status !== 'Done';
   const div = document.createElement('div');
   div.className = 'card' + (isOverdue ? ' overdue' : '');
   div.draggable = true;
@@ -252,11 +276,13 @@ function buildCard(task, today) {
   const dueDateHtml = task.due_date
     ? `<span class="due-date${isOverdue ? ' overdue' : ''}">📅 ${task.due_date}${isOverdue ? ' ⚠ overdue' : ''}</span>`
     : '';
+  const priorityHtml = `<span class="priority priority-${task.priority}">${task.priority}</span>`;
+  const assigneeHtml = task.assignee ? `<span class="assignee">👤 ${esc(task.assignee)}</span>` : '';
 
   div.innerHTML = `
     <div class="card-title">${esc(task.title)}</div>
     ${task.description ? `<div class="card-desc">${esc(task.description)}</div>` : ''}
-    <div class="card-meta">${tagsHtml}${dueDateHtml}</div>
+    <div class="card-meta">${priorityHtml}${tagsHtml}${dueDateHtml}${assigneeHtml}</div>
     <div class="card-actions">
       <button class="btn btn-primary btn-small" onclick="openModal('${task.id}')">Edit</button>
       <button class="btn btn-danger btn-small"  onclick="deleteTask('${task.id}')">Delete</button>
@@ -276,16 +302,20 @@ function openModal(id = null) {
 
   if (id) {
     const t = allTasks.find(t => t.id === id);
-    document.getElementById('f-title').value  = t.title;
-    document.getElementById('f-desc').value   = t.description;
-    document.getElementById('f-due').value    = t.due_date || '';
-    document.getElementById('f-tags').value   = t.tags.join(', ');
-    document.getElementById('f-status').value = t.status;
+    document.getElementById('f-title').value    = t.title;
+    document.getElementById('f-desc').value     = t.description;
+    document.getElementById('f-priority').value = t.priority;
+    document.getElementById('f-assignee').value = t.assignee || '';
+    document.getElementById('f-due').value      = t.due_date || '';
+    document.getElementById('f-tags').value     = t.tags.join(', ');
+    document.getElementById('f-status').value   = t.status;
   } else {
-    document.getElementById('f-title').value  = '';
-    document.getElementById('f-desc').value   = '';
-    document.getElementById('f-due').value    = '';
-    document.getElementById('f-tags').value   = '';
+    document.getElementById('f-title').value    = '';
+    document.getElementById('f-desc').value     = '';
+    document.getElementById('f-priority').value = 'Medium';
+    document.getElementById('f-assignee').value = '';
+    document.getElementById('f-due').value      = '';
+    document.getElementById('f-tags').value     = '';
   }
   document.getElementById('overlay').classList.add('active');
   document.getElementById('f-title').focus();
@@ -307,6 +337,8 @@ async function saveTask() {
   const body = {
     title,
     description: document.getElementById('f-desc').value.trim(),
+    priority: document.getElementById('f-priority').value,
+    assignee: document.getElementById('f-assignee').value.trim() || null,
     due_date: document.getElementById('f-due').value || null,
     tags,
   };
@@ -316,7 +348,7 @@ async function saveTask() {
     if (editingId) {
       body.status = document.getElementById('f-status').value;
       res = await fetch(`${API}/tasks/${editingId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -370,7 +402,7 @@ async function onDrop(e, newStatus) {
 
   try {
     const res = await fetch(`${API}/tasks/${draggingId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });

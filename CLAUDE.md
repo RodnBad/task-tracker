@@ -37,11 +37,16 @@ frontend/
   index.html         # Kanban board (single file, no build step)
 tests/
   conftest.py        # Fixtures (client, make_task, autouse clear_storage)
-  test_tasks.py      # Base CRUD + business rule tests (21 tests)
+  test_tasks.py      # Base CRUD + business rule tests (30 tests)
   test_due_dates.py  # Feature A: due dates + overdue filter (10 tests)
   test_tags.py       # Feature B: tags + tag filter + validation (13 tests)
 docs/midcourse/      # Mid-course project documentation
 ```
+
+## Data model
+`Task` fields: `id`, `title`, `description`, `status` (`ToDo`/`InProgress`/`Done`), `priority` (`Low`/`Medium`/`High`, default `Medium`), `assignee` (optional string), `due_date` (optional date), `tags` (list of strings).
+`TaskCreate`/`TaskUpdate` use `model_config = ConfigDict(extra="forbid")` — unknown fields (e.g. client-supplied `id`) are rejected with 422, not silently ignored.
+Update endpoint is `PATCH /tasks/{id}`, not `PUT`. Invalid status transitions return `422`, not `400`.
 
 ## Constraints — Do NOT
 - Add a real database (use in-memory storage only)
@@ -52,4 +57,6 @@ docs/midcourse/      # Mid-course project documentation
 
 ## Current State
 Mid-course project complete. Features A (due dates) and B (tags) implemented.
+Module 2 spec compliance fix applied (priority/assignee fields, PATCH, 422, extra=forbid,
+whitespace-title rejection, scoped CORS) — verified against the official `verify_a.py` script.
 All tests passing. See docs/midcourse/ for project documentation.

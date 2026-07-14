@@ -20,7 +20,7 @@ def test_create_task_with_due_date(client, make_task):
 
 def test_due_date_persists_after_update(client, make_task):
     task = make_task("Pay bill", due_date=tomorrow())
-    res = client.put(f"/tasks/{task['id']}", json={"title": "Pay bill updated"})
+    res = client.patch(f"/tasks/{task['id']}", json={"title": "Pay bill updated"})
     assert res.status_code == 200
     assert res.json()["due_date"] == tomorrow()
 
@@ -38,8 +38,8 @@ def test_overdue_filter_returns_overdue_tasks(client, make_task):
 def test_overdue_filter_excludes_done_tasks(client, make_task):
     """Break test: a done task should not appear as overdue even if past due."""
     task = make_task("Done overdue", due_date=yesterday())
-    client.put(f"/tasks/{task['id']}", json={"status": "in_progress"})
-    client.put(f"/tasks/{task['id']}", json={"status": "done"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "InProgress"})
+    client.patch(f"/tasks/{task['id']}", json={"status": "Done"})
     res = client.get("/tasks?overdue=true")
     assert res.json() == []
 
@@ -53,14 +53,14 @@ def test_overdue_filter_no_due_date_excluded(client, make_task):
 
 def test_update_due_date(client, make_task):
     task = make_task("Task", due_date=yesterday())
-    res = client.put(f"/tasks/{task['id']}", json={"due_date": tomorrow()})
+    res = client.patch(f"/tasks/{task['id']}", json={"due_date": tomorrow()})
     assert res.status_code == 200
     assert res.json()["due_date"] == tomorrow()
 
 
 def test_clear_due_date(client, make_task):
     task = make_task("Task", due_date=tomorrow())
-    res = client.put(f"/tasks/{task['id']}", json={"due_date": None})
+    res = client.patch(f"/tasks/{task['id']}", json={"due_date": None})
     assert res.status_code == 200
     assert res.json()["due_date"] is None
 
@@ -84,5 +84,5 @@ def test_invalid_due_date_format_rejected(client):
 def test_invalid_due_date_format_rejected_on_update(client, make_task):
     """Break test: a malformed due_date string is rejected on update."""
     task = make_task("Task", due_date=tomorrow())
-    res = client.put(f"/tasks/{task['id']}", json={"due_date": "31-12-2026"})
+    res = client.patch(f"/tasks/{task['id']}", json={"due_date": "31-12-2026"})
     assert res.status_code == 422

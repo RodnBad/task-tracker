@@ -32,14 +32,14 @@ def test_tag_filter_no_match_returns_empty(client, make_task):
 
 def test_update_tags(client, make_task):
     task = make_task("Task", tags=["old"])
-    res = client.put(f"/tasks/{task['id']}", json={"tags": ["new", "updated"]})
+    res = client.patch(f"/tasks/{task['id']}", json={"tags": ["new", "updated"]})
     assert res.status_code == 200
     assert res.json()["tags"] == ["new", "updated"]
 
 
 def test_clear_tags(client, make_task):
     task = make_task("Task", tags=["a", "b"])
-    res = client.put(f"/tasks/{task['id']}", json={"tags": []})
+    res = client.patch(f"/tasks/{task['id']}", json={"tags": []})
     assert res.status_code == 200
     assert res.json()["tags"] == []
 
@@ -73,7 +73,7 @@ def test_multiple_tasks_same_tag(client, make_task):
 def test_preserve_tags_after_unrelated_update(client, make_task):
     """Updating title should not touch existing tags."""
     task = make_task("Task", tags=["keep", "me"])
-    res = client.put(f"/tasks/{task['id']}", json={"title": "Renamed"})
+    res = client.patch(f"/tasks/{task['id']}", json={"title": "Renamed"})
     assert res.status_code == 200
     assert res.json()["tags"] == ["keep", "me"]
 
@@ -107,5 +107,5 @@ def test_reject_too_many_tags(client):
 def test_reject_empty_tag_on_update(client, make_task):
     """Break test: updating with an empty tag is rejected."""
     task = make_task("Task", tags=["ok"])
-    res = client.put(f"/tasks/{task['id']}", json={"tags": ["ok", ""]})
+    res = client.patch(f"/tasks/{task['id']}", json={"tags": ["ok", ""]})
     assert res.status_code == 422
