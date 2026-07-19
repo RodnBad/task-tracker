@@ -86,7 +86,29 @@ Full narrative and grading of each finding: [`docs/final-ai-review.md`](final-ai
 **Why this job exists:** Docker isn't installed on this development machine (`docker --version` → `command not found`), so `docker build`/`docker run` can't be verified locally. This CI job builds and runs the real image on every push using GitHub Actions' built-in Docker support, so "it builds, runs, and passes its health check" is machine-verified, not a claim.
 
 ### Final commit's actual run result
-*(Filled in immediately after pushing this exact version of the file — see the commit that follows this one, or check the **Actions** tab on GitHub directly for the latest run on `final-project`.)*
+
+Retrieved directly from GitHub after pushing the resubmission commit `509081f` (this exact file, minus this section, was part of that push):
+
+**Run:** [CI #3](https://github.com/RodnBad/task-tracker/actions/runs/29691732399) — commit `509081f`, branch `final-project`, triggered by push.
+**Status:** ✅ Success — total duration **1m 16s**.
+
+| Job | Conclusion | Duration |
+|---|---|---|
+| `test` | ✅ success | 14s |
+| `docker` | ✅ success | 13s |
+
+`docker` job step-by-step (confirmed via the GitHub Actions API, `GET /repos/RodnBad/task-tracker/actions/runs/29691732399/jobs`):
+
+| Step | Conclusion |
+|---|---|
+| Checkout code | ✅ success |
+| Build image | ✅ success |
+| Run container | ✅ success |
+| Wait for `/health` to return 200 | ✅ success |
+| Confirm the process runs as a non-root user | ✅ success |
+| Stop and remove container | ✅ success |
+
+This is the actual, final, verifiable state of the submitted commit — not a description of what the workflow is supposed to do.
 
 ---
 
