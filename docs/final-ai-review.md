@@ -6,16 +6,21 @@ AI code review and security review of the codebase, done on the `final-project` 
 
 ## AGENTS.md Guardrails Confirmed
 
-Every `app/`/`frontend/` change made on this branch, in full (this list was previously incomplete — corrected after instructor feedback flagged the inconsistency):
+`AGENTS.md` (repo root) was checked against what it's supposed to contain: a **Stack & Commands** section (install/run/test/Docker commands, confirmed accurate against the actual `README.md` Quick Start), a **Project Rules** section (no database, no auth, `extra="forbid"` must stay, transition validation must not be skipped), an **End-of-Course Project Boundaries** section (the "no new features, small fixes only, document changes here" rule this whole table exists to satisfy), and a **Review Expectations** section (read the diff, run tests, grade findings honestly, verify over restate). All four are present and current.
+
+## Every `app/`/`frontend`/`tests` Change On This Branch
+
+(This table was previously incomplete — corrected after instructor feedback flagged the inconsistency, and corrected again after an independent review found a 5th change had been added but never listed here.)
 
 | Change | File(s) | Category | Why it's in scope |
 |---|---|---|---|
 | Stored XSS fix — tags weren't `esc()`-escaped in card rendering | `frontend/index.html` | Security fix | One-line escaping fix to an existing render path — no new field, no new UI, no new behavior for a legitimate user. |
 | `assignee` whitespace-only not normalized/validated | `app/models.py` | Bug fix | Brings `assignee` in line with how `title`/`tags` already behave — a consistency/correctness fix, not new functionality. |
 | `GET /health` endpoint added | `app/main.py` | Release-readiness infra | Required by Part B for the Docker `HEALTHCHECK`; a monitoring endpoint, not a product feature — doesn't change any existing behavior. |
-| Explicit `null` on required fields (`status`, `title`, `description`, `priority`, `tags`) was silently accepted via `PATCH`, corrupting the task and bypassing transition validation | `app/models.py` | Bug fix (data-integrity / security) | Found via instructor review of this submission. Confirmed exploitable (`PATCH {"status": null}` returned `200` and set status to `null`, matching no Kanban column). Fixed with a `model_validator` that rejects explicit null on required fields while still allowing it on the genuinely-nullable `assignee`/`due_date`. See the Security Review table below. |
+| Explicit `null` on required fields (`status`, `title`, `description`, `priority`, `tags`) was silently accepted via `PATCH`, corrupting the task and bypassing transition validation | `app/models.py` | Bug fix (data-integrity / security) | Found via instructor review of this submission. Confirmed exploitable (`PATCH {"status": null}` returned `200` and set status to `null`, matching no Kanban column). Fixed with a `model_validator` that rejects explicit null on required fields while still allowing it on the genuinely-nullable `assignee`/`due_date`. |
+| Zero-width Unicode characters (U+200B and similar) bypassed the title/assignee/tag "not blank" checks — `str.strip()` doesn't treat them as whitespace | `app/models.py` | Bug fix (data-integrity) | Found via an independent adversarial review pass after the null-corruption fix above. Same failure category, different mechanism. Fixed with a shared `_strip_invisible()` helper applied to all three fields. See finding #5 in the Security Review table below. |
 
-Everything else added on this branch (`AGENTS.md`, `docs/release-evidence.md`, this file, `docs/ai-playbook.md`, the Dockerfile `HEALTHCHECK`, the `.dockerignore` additions, the CI `docker` job) is documentation or CI/Docker configuration — not `app/`/`frontend/` code, and not a product feature.
+Everything else added on this branch (`AGENTS.md` itself, `docs/release-evidence.md`, this file, `docs/ai-playbook.md`, the Dockerfile `HEALTHCHECK`, the `.dockerignore` additions, the CI `docker` job) is documentation or CI/Docker configuration — not `app/`/`frontend/` code, and not a product feature.
 
 ---
 

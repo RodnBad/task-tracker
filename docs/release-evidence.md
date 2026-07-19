@@ -86,19 +86,17 @@ Full narrative and grading of each finding, including what the adversarial pass 
 
 **Why this job exists:** Docker isn't installed on this development machine (`docker --version` → `command not found`), so `docker build`/`docker run` can't be verified locally. This CI job builds and runs the real image on every push using GitHub Actions' built-in Docker support, so "it builds, runs, and passes its health check" is machine-verified, not a claim.
 
-### Final commit's actual run result
+### CI/Docker run results for every code-bearing commit on this branch
 
-Retrieved directly from GitHub after pushing the resubmission commit `509081f` (this exact file, minus this section, was part of that push):
+An independent review of the first resubmission attempt found that this section cited CI evidence for commit `509081f` while two more commits (including the actual code fix for a second bug) had already landed on top of it — the same "evidence doesn't match the real final state" problem the instructor originally raised, recurring in miniature. To avoid that happening a third time, every commit that changed `app/`, `frontend/`, or `tests/` on this branch is listed below, not just one:
 
-**Run:** [CI #3](https://github.com/RodnBad/task-tracker/actions/runs/29691732399) — commit `509081f`, branch `final-project`, triggered by push.
-**Status:** ✅ Success — total duration **1m 16s**.
+| Commit | What changed | CI run | Result |
+|---|---|---|---|
+| `509081f` | Null-validation fix | [CI #3](https://github.com/RodnBad/task-tracker/actions/runs/29691732399) | ✅ Success, 1m 16s (test 14s, docker 13s) |
+| `9e4c5fb` | Docs only (recorded the run above) — no `app/`/`tests/` changes | [CI #4](https://github.com/RodnBad/task-tracker/actions/runs/29692998702) | ✅ Success |
+| `e35e63e` | Zero-width-character validation fix (`app/models.py`, `tests/test_tasks.py`) | [CI #5](https://github.com/RodnBad/task-tracker/actions/runs/29697933651) | ✅ Success, 1m 48s (test 16s, docker 22s) |
 
-| Job | Conclusion | Duration |
-|---|---|---|
-| `test` | ✅ success | 14s |
-| `docker` | ✅ success | 13s |
-
-`docker` job step-by-step (confirmed via the GitHub Actions API, `GET /repos/RodnBad/task-tracker/actions/runs/29691732399/jobs`):
+**`e35e63e` is the most recent commit that changes `app/`/`frontend/`/`tests/` as of this writing — its CI run (#5) is the one that actually reflects the current application behavior.** Full step-by-step for that run (confirmed via the GitHub Actions API, `GET /repos/RodnBad/task-tracker/actions/runs/29697933651/jobs`):
 
 | Step | Conclusion |
 |---|---|
@@ -109,7 +107,7 @@ Retrieved directly from GitHub after pushing the resubmission commit `509081f` (
 | Confirm the process runs as a non-root user | ✅ success |
 | Stop and remove container | ✅ success |
 
-This is the actual, final, verifiable state of the submitted commit — not a description of what the workflow is supposed to do.
+Any commits made *after* this file was last updated (e.g. to fix something this very validation pass found) will have their own run visible on the **Actions** tab on GitHub — check there for the true HEAD if this file is ever behind again.
 
 ---
 

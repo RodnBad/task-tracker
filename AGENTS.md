@@ -10,7 +10,7 @@ Guardrails for any AI agent (Claude Code, Codex, Copilot, etc.) working in this 
 ```bash
 pip install -r requirements-dev.txt   # install
 uvicorn app.main:app --reload         # run the API
-pytest -v                             # run tests (expect 54 passing)
+pytest -v                             # run tests (expect 65 passing)
 docker build -t task-tracker .        # build the container
 docker run -p 8000:8000 task-tracker  # run the container
 ```
