@@ -144,6 +144,67 @@ def test_update_task_created_at_not_client_settable(client, make_task):
     assert res.status_code == 422
 
 
+# ── Explicit-null rejection on required fields ──────────────────────────────────
+# Reported in instructor feedback on the end-of-course submission: PATCH with an
+# explicit `null` for a required field (e.g. {"status": null}) was accepted and
+# corrupted the task -- status became None (matching no Kanban column, and
+# bypassing transition validation since `if payload.status is not None` was
+# False), title/description/priority/tags had the same hole. `assignee` and
+# `due_date` are the only genuinely nullable fields on Task and must still
+# accept null (that's how you clear them).
+
+def test_patch_status_null_rejected(client, make_task):
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"status": None})
+    assert res.status_code == 422
+    # confirm the task wasn't corrupted
+    assert client.get(f"/tasks/{task['id']}").json()["status"] == "ToDo"
+
+
+def test_patch_title_null_rejected(client, make_task):
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"title": None})
+    assert res.status_code == 422
+    assert client.get(f"/tasks/{task['id']}").json()["title"] == "Task"
+
+
+def test_patch_description_null_rejected(client, make_task):
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"description": None})
+    assert res.status_code == 422
+
+
+def test_patch_priority_null_rejected(client, make_task):
+    task = make_task("Task")
+    res = client.patch(f"/tasks/{task['id']}", json={"priority": None})
+    assert res.status_code == 422
+    assert client.get(f"/tasks/{task['id']}").json()["priority"] == "Medium"
+
+
+def test_patch_tags_null_rejected(client, make_task):
+    task = make_task("Task", tags=["keep"])
+    res = client.patch(f"/tasks/{task['id']}", json={"tags": None})
+    assert res.status_code == 422
+    assert client.get(f"/tasks/{task['id']}").json()["tags"] == ["keep"]
+
+
+def test_patch_assignee_null_still_clears_it(client, make_task):
+    """assignee IS genuinely nullable on Task -- null must still work here."""
+    task = make_task("Task")
+    client.patch(f"/tasks/{task['id']}", json={"assignee": "Sam"})
+    res = client.patch(f"/tasks/{task['id']}", json={"assignee": None})
+    assert res.status_code == 200
+    assert res.json()["assignee"] is None
+
+
+def test_patch_due_date_null_still_clears_it(client, make_task):
+    """due_date IS genuinely nullable on Task -- null must still work here."""
+    task = make_task("Task", due_date="2099-01-01")
+    res = client.patch(f"/tasks/{task['id']}", json={"due_date": None})
+    assert res.status_code == 200
+    assert res.json()["due_date"] is None
+
+
 def test_update_priority_and_assignee(client, make_task):
     task = make_task("Task")
     res = client.patch(f"/tasks/{task['id']}", json={"priority": "Low", "assignee": "Sam"})

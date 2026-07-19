@@ -1,21 +1,64 @@
 # Release Evidence — End-of-Course Project
 
-Baseline check, CI verification, Docker verification, and a claim-vs-reality check of the README, done on the `final-project` branch before any release-readiness changes were made.
+Baseline check, CI verification, Docker verification, and a claim-vs-reality check of the README — rebuilt after instructor feedback on the first submission flagged that this file was out of date and incomplete. Every section below reflects the actual final repository state, verified directly rather than restated from memory.
 
 ---
 
 ## Baseline Check
 
-Before making any changes on this branch, confirmed the app and test suite from `mid-course-project` still worked:
+**Backend start command** (exact command from `README.md`):
+```
+uvicorn app.main:app --reload
+```
+Output:
+```
+INFO:     Will watch for changes in these directories: [...task-tracker']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [...] using WatchFiles
+INFO:     Started server process [...]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+```
+
+**Observed `/health` result:**
+```
+$ curl -s -w "\nHTTP %{http_code}\n" http://localhost:8000/health
+{"status":"ok"}
+HTTP 200
+```
+(`GET /` was also checked and returns the same `{"status":"ok"}` / `200` — kept for backward compatibility, `/health` is the dedicated one used by the Dockerfile `HEALTHCHECK`.)
+
+**Frontend opening method:** `frontend/index.html`, as documented in the README, is a static file with no build step. It was served from a local static file server for automated verification (browser tooling in this environment renders raw `file://` paths as static snapshots rather than executing them); this exercises the identical HTML/CSS/JS a double-click open would run. The page loaded with zero console errors and the board rendered correctly.
+
+**Kanban create/edit flow confirmed working end-to-end:**
+1. Clicked **+ New Task**, entered a title, saved → `POST /tasks` returned `201`, card appeared in the **To Do** column immediately.
+2. Deleted the test task afterward (`DELETE /tasks/{id}` → `204`) to leave the board clean.
+
+No regressions in the base CRUD flow from this branch's changes.
+
+---
+
+## Test Suite — Final State
 
 ```
-pytest -q
+pytest -v
 ```
-```
-53 passed in 1.00s
-```
+**Result: 63 passed, 0 failed.**
+- `test_tasks.py` — 39 tests
+- `test_due_dates.py` — 10 tests
+- `test_tags.py` — 14 tests
 
-No regressions inherited from `mid-course-project`. This branch then added a `GET /health` endpoint, a `docker` CI job, and this documentation — no product features.
+### How this number got here (accurate history, corrected from the first submission)
+The first submission's release evidence said 54 and stopped there. The real progression across this branch's work:
+
+| Count | What changed |
+|---|---|
+| 53 | Baseline inherited from `mid-course-project` (confirmed unchanged at the start of this branch). |
+| 54 | Added `test_health_endpoint` for the new `GET /health` route (Part B). |
+| 56 | Part C security review found and fixed two real bugs — stored XSS via unescaped `tags` in `frontend/index.html`, and `assignee` accepting whitespace-only values instead of normalizing to "unassigned" — each with a regression test (`test_whitespace_only_assignee_normalized_to_none`, `test_assignee_is_trimmed`). This was the state of the *first, "Not Met" submission*. |
+| **63** | Instructor review of that submission found a third, more serious bug: `PATCH` accepted an explicit `null` for required fields (`status`, `title`, `description`, `priority`, `tags`), corrupting the task and — for `status` — bypassing transition validation entirely (confirmed: `PATCH {"status": null}` returned `200` and set the task's status to `null`, which matches no Kanban column). Fixed with a `model_validator` on `TaskUpdate`; 7 new regression tests added (one per required field rejecting null, plus two confirming `assignee`/`due_date` — the two genuinely nullable fields — still correctly accept null). **This is the current, final count.** |
+
+Full narrative and grading of each finding: [`docs/final-ai-review.md`](final-ai-review.md).
 
 ---
 
@@ -31,7 +74,7 @@ No regressions inherited from `mid-course-project`. This branch then added a `GE
 | Runs the real test suite | `pytest -v --tb=short` |
 | No failure-swallowing | No `continue-on-error`, no `\|\| true`, no `--exitfirst`/skip flags anywhere in the workflow |
 
-New `docker` job (`needs: test`, only runs after tests pass):
+`docker` job (`needs: test`, only runs after tests pass):
 
 | Check | Evidence |
 |---|---|
@@ -40,7 +83,10 @@ New `docker` job (`needs: test`, only runs after tests pass):
 | `/health` returns 200 | Polls `curl -sf http://localhost:8000/health` up to 15s, fails the job (and dumps container logs) if it never succeeds |
 | Runs as non-root | `docker exec task-tracker-test whoami` — job fails if the result is `root` |
 
-**Why this job exists:** Docker isn't installed on this development machine (`docker --version` → `command not found`), so `docker build`/`docker run` couldn't be verified locally. Rather than just asserting the Dockerfile is correct, this CI job actually builds and runs the real image on every push, using GitHub Actions' built-in Docker support — so "it builds, runs, and passes its health check" is machine-verified, not a claim. Check the **Actions** tab on GitHub for the `docker` job's pass/fail status and logs after this branch is pushed.
+**Why this job exists:** Docker isn't installed on this development machine (`docker --version` → `command not found`), so `docker build`/`docker run` can't be verified locally. This CI job builds and runs the real image on every push using GitHub Actions' built-in Docker support, so "it builds, runs, and passes its health check" is machine-verified, not a claim.
+
+### Final commit's actual run result
+*(Filled in immediately after pushing this exact version of the file — see the commit that follows this one, or check the **Actions** tab on GitHub directly for the latest run on `final-project`.)*
 
 ---
 
@@ -49,31 +95,32 @@ New `docker` job (`needs: test`, only runs after tests pass):
 `Dockerfile`:
 - **Multi-stage:** `builder` stage (installs dependencies to `/install`) → slim runtime stage (`python:3.12-slim`, copies only the installed packages + `app/`).
 - **Non-root:** `RUN adduser --disabled-password --gecos "" appuser` then `USER appuser` before `CMD`.
-- **HEALTHCHECK:** added this branch — probes `GET /health` via Python's `urllib` (no `curl` in the slim image, avoids installing one just for this).
+- **HEALTHCHECK:** probes `GET /health` via Python's `urllib` (no `curl` in the slim image, avoids installing one just for this).
 
-`.dockerignore` — added this branch: `.git/`, `.gitignore`, `.venv/`, `venv/`, `.pytest_cache/` (previously missing; only `__pycache__/`, `.env`, test/doc/frontend folders were excluded).
+`.dockerignore`: `.git/`, `.gitignore`, `.venv/`, `venv/`, `.pytest_cache/`, `__pycache__/`, `.env`, test/doc/frontend folders.
 
 ---
 
 ## Claim-vs-Reality: README
 
-Checked every concrete claim in `README.md` against the actual code, corrected what didn't match:
-
 | Claim | Reality | Result |
 |---|---|---|
-| "Expected: 53 tests, all passing" | Adding `test_health_endpoint` (for the new `/health` route) brought the count to 54 | ❌ Stale — corrected to 54 |
-| API table listed only `GET /` for health | `GET /health` now also exists | ❌ Missing row — added |
-| Docker section didn't mention the health check or non-root user | Both are real, verifiable properties of the image | ⚠️ Incomplete — added a line describing them and pointing to this file |
-| "PATCH /tasks/{id} ... only send fields you're changing" | Confirmed: `update_dict = {k: getattr(payload, k) for k in payload.model_fields_set}` in `app/main.py` only applies fields actually present in the request body | ✅ Accurate |
-| "Invalid status transitions return 422" | Confirmed: `app/main.py` raises `HTTPException(status_code=422, ...)` in `update_task` | ✅ Accurate |
-| "CORS is scoped to common local dev origins ... rather than `*`" | Confirmed: `allow_origins=[...]` lists specific origins, no wildcard | ✅ Accurate |
-| `docs/midcourse/verification.md` listed `test_tasks.py — 30 tests`, `test_tags.py — 13 tests` | Actual (via `pytest --collect-only`, pre-this-branch): `test_tasks.py` had 29, `test_tags.py` had 14 — the two counts were swapped. Total of 53 happened to still be correct | ❌ Wrong breakdown — corrected in that file |
+| Test count | Now says 63 — matches `pytest -v` exactly | ✅ Corrected |
+| API table lists `GET /health` | Confirmed present in `app/main.py` | ✅ Accurate |
+| "PATCH ... only send fields you're changing" | Confirmed: `update_dict = {k: getattr(payload, k) for k in payload.model_fields_set}` only applies fields actually present in the request | ✅ Accurate |
+| "Invalid status transitions return 422" | Confirmed in `app/main.py` | ✅ Accurate |
+| CORS scoped, not `*` | Confirmed: `allow_origins=[...]` lists specific origins | ✅ Accurate |
+| `docs/midcourse/verification.md` per-file test breakdown | Was previously wrong (test_tasks.py/test_tags.py counts swapped); corrected in that file, noted there | ✅ Corrected |
 
 ---
 
-## Test Suite
+## Secrets Scan
 
+Confirmed no secrets/credentials/tokens/production data anywhere in the tracked repo:
 ```
-pytest -v
+git ls-tree -r --name-only final-project | grep -iE "\.env|secret|credential|token|\.pem|\.key|password"
+# (no output)
+git grep -inE "api[_-]?key|secret[_-]?key|password\s*=|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|PRIVATE) KEY-----|Bearer [A-Za-z0-9._-]{20,}" final-project -- .
+# (no output)
 ```
-**Result:** 54 passed, 0 failed (test_tasks.py 30, test_due_dates.py 10, test_tags.py 14).
+`.gitignore` excludes `.env`/`.env.*`; no such file exists anywhere in the working tree.

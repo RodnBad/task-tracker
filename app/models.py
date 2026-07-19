@@ -7,7 +7,14 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# Fields that are required (non-nullable) on Task. TaskUpdate types these as
+# Optional so "field omitted" is representable for PATCH semantics, but an
+# explicit `null` for one of these must still be rejected -- see
+# TaskUpdate.reject_null_on_required_fields. `assignee` and `due_date` are
+# genuinely nullable on Task and are excluded on purpose.
+_REQUIRED_ON_TASK = ("title", "description", "status", "priority", "tags")
 
 # Tag limits (see docs/midcourse/mini-adr.md, ADR-05)
 MAX_TAGS = 10
@@ -117,6 +124,27 @@ class TaskUpdate(BaseModel):
         if value is None:
             return value
         return _clean_tags(value)
+
+    @model_validator(mode="after")
+    def reject_null_on_required_fields(self) -> "TaskUpdate":
+        """A field being *omitted* means "don't touch it" (None by default).
+        A field being *explicitly* sent as null is different -- for
+        required fields, that must be rejected, not silently applied.
+        Without this, `PATCH {"status": null}` would bypass transition
+        validation entirely and corrupt the task (status becomes None,
+        which matches no Kanban column); same for title/description/
+        priority/tags. `field_validator` alone can't tell "omitted" from
+        "explicitly null" apart -- only `model_fields_set` can."""
+        nulled = [
+            f for f in _REQUIRED_ON_TASK
+            if f in self.model_fields_set and getattr(self, f) is None
+        ]
+        if nulled:
+            raise ValueError(
+                f"{', '.join(nulled)} cannot be explicitly set to null — "
+                f"omit the field instead if you don't want to change it."
+            )
+        return self
 
 
 class Task(BaseModel):
