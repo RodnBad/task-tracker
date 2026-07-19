@@ -13,7 +13,7 @@ A task management API with a Kanban board frontend, built with FastAPI and vanil
 This branch (`final-project`) extends `mid-course-project` with release-readiness evidence and AI-review documentation — no new product features were added, per the assignment's "protect app/frontend" rule.
 
 **Run it** — same as [Quick Start](#quick-start) below: `pip install -r requirements-dev.txt`, then `uvicorn app.main:app --reload`.
-**Test it** — `pytest -v` (54 tests, all passing — see [Running Tests](#running-tests)).
+**Test it** — `pytest -v` (65 tests, all passing — see [Running Tests](#running-tests)).
 **Containerize it** — `docker build -t task-tracker .` then `docker run -p 8000:8000 task-tracker`; health check at `GET /health` (see [Docker](#docker)).
 
 **Evidence files:**
@@ -60,7 +60,7 @@ Open `frontend/index.html` in your browser (no build step required). CORS is sco
 ```bash
 pytest -v
 ```
-Expected: 54 tests, all passing.
+Expected: 65 tests, all passing.
 
 ---
 

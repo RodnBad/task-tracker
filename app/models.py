@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from enum import Enum
 from typing import Optional
@@ -20,6 +21,19 @@ _REQUIRED_ON_TASK = ("title", "description", "status", "priority", "tags")
 MAX_TAGS = 10
 MAX_TAG_LENGTH = 30
 
+# Zero-width / invisible characters that Python's str.strip() does NOT treat
+# as whitespace (str.isspace() is False for these), so a string made up of
+# only these chars survives .strip() and reads as "blank" but non-empty --
+# found via adversarial review after the plain-whitespace bug. In order:
+# ZERO WIDTH SPACE, ZERO WIDTH NON-JOINER, ZERO WIDTH JOINER, WORD JOINER,
+# ZERO WIDTH NO-BREAK SPACE / BOM.
+_INVISIBLE_CHARS = re.compile("[​‌‍⁠﻿]")
+
+
+def _strip_invisible(value: str) -> str:
+    """Strip zero-width/invisible characters, then normal whitespace."""
+    return _INVISIBLE_CHARS.sub("", value).strip()
+
 
 class TaskStatus(str, Enum):
     """Valid task statuses."""
@@ -36,10 +50,10 @@ class TaskPriority(str, Enum):
 
 
 def _clean_tags(tags: list[str]) -> list[str]:
-    """Trim whitespace and reject empty or over-limit tags."""
+    """Trim whitespace/invisible chars and reject empty or over-limit tags."""
     cleaned = []
     for tag in tags:
-        trimmed = tag.strip()
+        trimmed = _strip_invisible(tag)
         if not trimmed:
             raise ValueError("Tags must not be empty or whitespace-only.")
         if len(trimmed) > MAX_TAG_LENGTH:
@@ -51,18 +65,18 @@ def _clean_tags(tags: list[str]) -> list[str]:
 
 
 def _clean_title(title: str) -> str:
-    """Reject titles that are empty or whitespace-only after stripping."""
-    trimmed = title.strip()
+    """Reject titles that are empty or whitespace/invisible-only after stripping."""
+    trimmed = _strip_invisible(title)
     if not trimmed:
         raise ValueError("Title must not be empty or whitespace-only.")
     return trimmed
 
 
 def _clean_assignee(assignee: Optional[str]) -> Optional[str]:
-    """Trim whitespace; a whitespace-only assignee means "unassigned" (None)."""
+    """Trim whitespace/invisible chars; a blank assignee means "unassigned" (None)."""
     if assignee is None:
         return None
-    trimmed = assignee.strip()
+    trimmed = _strip_invisible(assignee)
     return trimmed or None
 
 

@@ -65,6 +65,22 @@ def test_create_task_whitespace_title_rejected(client):
     assert res.status_code == 422
 
 
+def test_create_task_invisible_char_title_rejected(client):
+    """Break test (found via adversarial review): a title made up of only
+    zero-width/invisible Unicode characters (e.g. U+200B) survives a plain
+    str.strip() and must not be treated as real content."""
+    res = client.post("/tasks", json={"title": "​‌‍"})
+    assert res.status_code == 422
+
+
+def test_title_with_stray_invisible_char_is_cleaned(client):
+    """Legitimate content with a stray zero-width char attached should still
+    be accepted, with the invisible character stripped."""
+    res = client.post("/tasks", json={"title": "Buy milk​"})
+    assert res.status_code == 201
+    assert res.json()["title"] == "Buy milk"
+
+
 def test_create_task_title_too_long_rejected(client):
     res = client.post("/tasks", json={"title": "x" * 201})
     assert res.status_code == 422

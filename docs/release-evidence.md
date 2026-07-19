@@ -43,8 +43,8 @@ No regressions in the base CRUD flow from this branch's changes.
 ```
 pytest -v
 ```
-**Result: 63 passed, 0 failed.**
-- `test_tasks.py` — 39 tests
+**Result: 65 passed, 0 failed.**
+- `test_tasks.py` — 41 tests
 - `test_due_dates.py` — 10 tests
 - `test_tags.py` — 14 tests
 
@@ -56,9 +56,10 @@ The first submission's release evidence said 54 and stopped there. The real prog
 | 53 | Baseline inherited from `mid-course-project` (confirmed unchanged at the start of this branch). |
 | 54 | Added `test_health_endpoint` for the new `GET /health` route (Part B). |
 | 56 | Part C security review found and fixed two real bugs — stored XSS via unescaped `tags` in `frontend/index.html`, and `assignee` accepting whitespace-only values instead of normalizing to "unassigned" — each with a regression test (`test_whitespace_only_assignee_normalized_to_none`, `test_assignee_is_trimmed`). This was the state of the *first, "Not Met" submission*. |
-| **63** | Instructor review of that submission found a third, more serious bug: `PATCH` accepted an explicit `null` for required fields (`status`, `title`, `description`, `priority`, `tags`), corrupting the task and — for `status` — bypassing transition validation entirely (confirmed: `PATCH {"status": null}` returned `200` and set the task's status to `null`, which matches no Kanban column). Fixed with a `model_validator` on `TaskUpdate`; 7 new regression tests added (one per required field rejecting null, plus two confirming `assignee`/`due_date` — the two genuinely nullable fields — still correctly accept null). **This is the current, final count.** |
+| 63 | Instructor review of that submission found a third, more serious bug: `PATCH` accepted an explicit `null` for required fields (`status`, `title`, `description`, `priority`, `tags`), corrupting the task and — for `status` — bypassing transition validation entirely (confirmed: `PATCH {"status": null}` returned `200` and set the task's status to `null`, which matches no Kanban column). Fixed with a `model_validator` on `TaskUpdate`; 7 new regression tests added (one per required field rejecting null, plus two confirming `assignee`/`due_date` — the two genuinely nullable fields — still correctly accept null). |
+| **65** | Requested an independent adversarial review pass after the fix above (not another instructor round) — it found the same bug class survives as a Unicode edge case: a title/assignee/tag made of only zero-width characters (e.g. U+200B) passes `str.strip()` unchanged, since Python doesn't count them as whitespace. Fixed with a shared `_strip_invisible()` helper applied to all three fields; 2 new regression tests. **This is the current, final count.** |
 
-Full narrative and grading of each finding: [`docs/final-ai-review.md`](final-ai-review.md).
+Full narrative and grading of each finding, including what the adversarial pass tried and could *not* break: [`docs/final-ai-review.md`](final-ai-review.md).
 
 ---
 
@@ -127,7 +128,7 @@ This is the actual, final, verifiable state of the submitted commit — not a de
 
 | Claim | Reality | Result |
 |---|---|---|
-| Test count | Now says 63 — matches `pytest -v` exactly | ✅ Corrected |
+| Test count | Now says 65 — matches `pytest -v` exactly | ✅ Corrected |
 | API table lists `GET /health` | Confirmed present in `app/main.py` | ✅ Accurate |
 | "PATCH ... only send fields you're changing" | Confirmed: `update_dict = {k: getattr(payload, k) for k in payload.model_fields_set}` only applies fields actually present in the request | ✅ Accurate |
 | "Invalid status transitions return 422" | Confirmed in `app/main.py` | ✅ Accurate |
