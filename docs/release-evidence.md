@@ -88,13 +88,18 @@ Full narrative and grading of each finding, including what the adversarial pass 
 
 ### CI/Docker run results for every code-bearing commit on this branch
 
-An independent review of the first resubmission attempt found that this section cited CI evidence for commit `509081f` while two more commits (including the actual code fix for a second bug) had already landed on top of it — the same "evidence doesn't match the real final state" problem the instructor originally raised, recurring in miniature. To avoid that happening a third time, every commit that changed `app/`, `frontend/`, or `tests/` on this branch is listed below, not just one:
+> **Latest verified commit as of this update: `e35e63e`.**
+> **CI run: [#5](https://github.com/RodnBad/task-tracker/actions/runs/29697933651) — ✅ Success, 1m 48s (test 16s, docker 22s).**
+> This is the newest commit that changes `app/`, `frontend/`, or `tests/` on this branch. If a newer commit exists when you're reading this, it changed documentation only (see the commit list on GitHub) — application behavior, and the CI run cited above, are unchanged by any docs-only commit after it.
+
+Two rounds of feedback have now flagged this section for not clearly pointing at the actual final state — first because a genuinely newer commit existed and wasn't cited, most recently because the citation was buried after historical context instead of leading with it. The callout above is the fix: one unambiguous statement, first, before any table. Full commit-by-commit history is kept below for transparency, not because it's the answer to "what's the current state" — the callout above is.
 
 | Commit | What changed | CI run | Result |
 |---|---|---|---|
 | `509081f` | Null-validation fix | [CI #3](https://github.com/RodnBad/task-tracker/actions/runs/29691732399) | ✅ Success, 1m 16s (test 14s, docker 13s) |
 | `9e4c5fb` | Docs only (recorded the run above) — no `app/`/`tests/` changes | [CI #4](https://github.com/RodnBad/task-tracker/actions/runs/29692998702) | ✅ Success |
 | `e35e63e` | Zero-width-character validation fix (`app/models.py`, `tests/test_tasks.py`) | [CI #5](https://github.com/RodnBad/task-tracker/actions/runs/29697933651) | ✅ Success, 1m 48s (test 16s, docker 22s) |
+| `60f0215` | Docs only (Decision Card format, this CI-linking fix, change-log row) — no `app/`/`tests/` changes | [CI #6](https://github.com/RodnBad/task-tracker/actions/runs/29699074231) | ✅ Success, 39s (test 12s, docker 19s) |
 
 **`e35e63e` is the most recent commit that changes `app/`/`frontend/`/`tests/` as of this writing — its CI run (#5) is the one that actually reflects the current application behavior.** Full step-by-step for that run (confirmed via the GitHub Actions API, `GET /repos/RodnBad/task-tracker/actions/runs/29697933651/jobs`):
 

@@ -1,35 +1,33 @@
 # My Personal AI Playbook
 
-*One page. Written after building and defending Task Tracker end-to-end with AI doing the typing and me doing the deciding.*
-
 ## When I reach for AI first
-Any task that produces code, tests, or docs — I ask, I don't type it myself; that's every line of this repo. Also for grounding: instead of trusting my memory of a course requirement, I ask AI to find and quote the actual source PDF (this is exactly how the `verify_a.py`/`TaskPriority` gap and the Decision Card's real format both got found — my first draft of both was a guess, not a lookup).
+Any task producing code, tests, or docs — every line of this repo. Also for grounding: instead of trusting my memory of a requirement, I ask AI to find and quote the actual source PDF. That's how the real `TaskPriority` gap and the Decision Card's real format both got found — my first draft of each was a guess, not a lookup.
 
 ## When I do not reach for AI first
-Scope and priority trade-offs are mine, not AI's — whether to do the full Module 2 rebuild, whether "duplicate tags allowed" was worth fixing, what counts as a "small fix" versus a forbidden new feature on this branch. I don't ask AI whether my own fix is "good enough" as a stand-in for verifying it myself.
+Scope and priority calls are mine — whether to do the full Module 2 rebuild, what counts as a "small fix" vs. a forbidden feature on this branch. I don't ask AI whether my own fix is "good enough"; I verify it myself.
 
 ## My non-negotiables
-- Never paste real secrets, API keys, tokens, `.env` contents, credentials, or real personal data (names beyond my own, emails, phone numbers, production logs) into an AI tool — test/demo data only.
+- Never paste real secrets, API keys, tokens, `.env` contents, credentials, or real personal data into an AI tool — test data only.
 - Every diff gets read before it's accepted, not skimmed.
-- A claim gets checked against reality — run it, curl it, read the actual response bytes — before I believe it.
+- A claim gets checked against reality — run it, curl it — before I believe it.
 
 ## My review rules
-- Grade every AI review comment honestly (Useful/Noise/Wrong, or Valid/False Positive/Noise for security) — not everything flagged is real, and not everything real gets flagged the first time (see `docs/final-ai-review.md`'s graded findings).
-- Reproduce before explaining: confirmed via `TestClient`/`curl`, never just a description of expected behavior.
-- A green test suite isn't proof if it doesn't cover the actual failure mode — 65/65 passing didn't stop two real bugs (null-corruption, zero-width-character bypass) from shipping in earlier commits.
+- Grade every AI comment honestly (Useful/Noise/Wrong; Valid/False Positive/Noise for security) — not everything flagged is real, and not everything real gets flagged the first time.
+- Reproduce before explaining — confirmed via `TestClient`/`curl`, never just a description.
+- A green suite isn't proof if it misses the failure mode — 65/65 passing didn't stop two real bugs from shipping earlier.
 
 ## What I am still figuring out
-- How "read every diff" scales once a codebase is too large to review line-by-line — this project stayed reviewable because it stayed small.
-- Whether my own self-review will ever catch what an independent pass catches. Evidence so far says no: the instructor's review found the null bug, a fresh adversarial subagent found the zero-width-character variant, and my own first-pass review caught neither.
+- How "read every diff" scales once a codebase is too big to review line-by-line.
+- Whether my own review will ever catch what an independent pass catches — so far the instructor caught one bug and a fresh subagent caught another that I missed both times.
 
 ## Decision Card
 | Decision | My answer |
 |---|---|
-| **New feature** | A terminal agent (Claude Code) — this project showed it handles multi-step loops (model→endpoint→frontend→tests) better than reviewing one generated snippet at a time. |
-| **Code review** | A fresh, independent agent with no memory of writing the code — self-review from the same session that wrote it missed the null-corruption bug; an independent pass is what caught the follow-up bug. |
-| **Debugging** | Whatever agent I'm already in, but only after I paste the exact failing test output or `curl` response — not a description of the symptom. |
-| **Infrastructure** | A terminal agent for Docker/CI, but verified via the CI job's real GitHub Actions run result, not a local claim — Docker isn't even installed on this machine, so "it should work" was never acceptable evidence here. |
-| **Never paste** | Real secrets, API keys, tokens, `.env` contents, credentials, and any real person's personal data. |
-| **One rule** | Ask for an adversarial review before calling anything done — not after a grader has to ask me first. |
+| **New feature** | Terminal agent (Claude Code) — handles multi-step loops better than one-snippet review. |
+| **Code review** | A fresh agent with no memory of writing the code — self-review missed the null bug; an independent pass caught the next one. |
+| **Debugging** | Same agent, but only after pasting the exact failing test/error — not a description. |
+| **Infrastructure** | Terminal agent for Docker/CI, verified via the real GitHub Actions run — Docker isn't even installed locally, so "should work" was never enough. |
+| **Never paste** | Secrets, API keys, tokens, `.env` contents, credentials, real personal data. |
+| **One rule** | Ask for an adversarial review before calling anything done — not after a grader asks first. |
 
-**Commitment:** re-read this page in 30 days and ask honestly: am I still following it?
+**Commitment:** re-read this in 30 days and ask honestly: am I still following it?
