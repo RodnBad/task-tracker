@@ -100,6 +100,7 @@ Two rounds of feedback have now flagged this section for not clearly pointing at
 | `9e4c5fb` | Docs only (recorded the run above) — no `app/`/`tests/` changes | [CI #4](https://github.com/RodnBad/task-tracker/actions/runs/29692998702) | ✅ Success |
 | `e35e63e` | Zero-width-character validation fix (`app/models.py`, `tests/test_tasks.py`) | [CI #5](https://github.com/RodnBad/task-tracker/actions/runs/29697933651) | ✅ Success, 1m 48s (test 16s, docker 22s) |
 | `60f0215` | Docs only (Decision Card format, this CI-linking fix, change-log row) — no `app/`/`tests/` changes | [CI #6](https://github.com/RodnBad/task-tracker/actions/runs/29699074231) | ✅ Success, 39s (test 12s, docker 19s) |
+| `319ca38` | Docs only (shortened ai-playbook.md, added the callout above) — no `app/`/`tests/` changes | [CI #7](https://github.com/RodnBad/task-tracker/actions/runs/29735343300) | ✅ Success (test 11s, docker 17s) |
 
 **`e35e63e` is the most recent commit that changes `app/`/`frontend/`/`tests/` as of this writing — its CI run (#5) is the one that actually reflects the current application behavior.** Full step-by-step for that run (confirmed via the GitHub Actions API, `GET /repos/RodnBad/task-tracker/actions/runs/29697933651/jobs`):
 
